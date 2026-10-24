@@ -1,0 +1,25 @@
+@model LoginInput
+@{ ViewData["Title"] = "Entrar"; }
+<div class="mx-auto py-5" style="max-width:380px">
+    <h1>Emissor Fiscal</h1>
+    <p class="lead-text">Entre com seu e-mail e senha.</p>
+    <form method="post" asp-route-returnUrl="@Context.Request.Query["returnUrl"]">
+        <div asp-validation-summary="All" class="text-danger small" role="alert"></div>
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label">E-mail</label>
+            <input asp-for="Email" type="email" class="form-control" autocomplete="email" required autofocus />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label">Senha</label>
+            <div class="input-group">
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" required />
+                <button type="button" class="btn btn-outline-secondary" data-toggle-password="Password">Mostrar</button>
+            </div>
+        </div>
+        <button class="btn btn-primary w-100">Entrar</button>
+    </form>
+    @if (ViewBag.CanRegister == true)
+    {
+        <p class="text-center mt-3">Primeiro acesso? <a asp-action="Register">Criar conta com e-mail e senha</a></p>
+    }
+</div>

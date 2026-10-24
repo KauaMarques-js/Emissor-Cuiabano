@@ -1,0 +1,21 @@
+@model IPaged
+@{
+    string Link(int page)
+    {
+        var query = Context.Request.Query.Where(q => q.Key != "page" && q.Key != "Page")
+            .Select(q => $"{Uri.EscapeDataString(q.Key)}={Uri.EscapeDataString(q.Value.ToString())}")
+            .Append($"page={page}");
+        return Context.Request.Path + "?" + string.Join("&", query);
+    }
+}
+<div class="d-flex align-items-center gap-2 small">
+    <span>@Model.Total registro(s) — página @Model.Page de @Model.TotalPages</span>
+    @if (Model.Page > 1)
+    {
+        <a href="@Link(Model.Page - 1)">« anterior</a>
+    }
+    @if (Model.Page < Model.TotalPages)
+    {
+        <a href="@Link(Model.Page + 1)">próxima »</a>
+    }
+</div>

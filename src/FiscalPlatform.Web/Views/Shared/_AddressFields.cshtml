@@ -1,0 +1,24 @@
+@model Address
+@* Endereço com busca pelo CEP. Deve ficar dentro de um elemento [data-lookup-scope]. *@
+<div class="row g-2">
+    <div class="col-sm-4 col-md-3">
+        <label asp-for="ZipCode" class="form-label">CEP</label>
+        <input asp-for="ZipCode" class="form-control" data-mask="cep" data-lookup="cep" data-field="zipCode" inputmode="numeric" autocomplete="postal-code" />
+        <span asp-validation-for="ZipCode" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-8 col-md-9 d-flex align-items-end"><div class="lookup-status" data-lookup-status="cep" aria-live="polite">Digite o CEP para preencher o endereço.</div></div>
+    <div class="col-md-7"><label asp-for="Street" class="form-label">Rua</label><input asp-for="Street" class="form-control" data-field="street" autocomplete="address-line1" /></div>
+    <div class="col-5 col-md-2"><label asp-for="Number" class="form-label">Número</label><input asp-for="Number" class="form-control" data-field="number" /></div>
+    <div class="col-7 col-md-3"><label asp-for="Complement" class="form-label">Complemento</label><input asp-for="Complement" class="form-control" data-field="complement" autocomplete="address-line2" /></div>
+    <div class="col-md-5"><label asp-for="District" class="form-label">Bairro</label><input asp-for="District" class="form-control" data-field="district" /></div>
+    <div class="col-8 col-md-5"><label asp-for="City" class="form-label">Cidade</label><input asp-for="City" class="form-control" data-field="city" /></div>
+    <div class="col-4 col-md-2"><label asp-for="State" class="form-label">UF</label><input asp-for="State" class="form-control text-uppercase" maxlength="2" data-field="state" /><span asp-validation-for="State" class="text-danger small"></span></div>
+    <details class="col-12 small">
+        <summary>Código IBGE da cidade: <span>@(Model?.CityIbgeCode ?? "preenchido pelo CEP")</span></summary>
+        <div class="col-sm-4 mt-1">
+            <label asp-for="CityIbgeCode" class="form-label">Código IBGE (7 números)</label>
+            <input asp-for="CityIbgeCode" class="form-control form-control-sm" data-field="cityIbgeCode" inputmode="numeric" maxlength="7" />
+        </div>
+    </details>
+    <span asp-validation-for="CityIbgeCode" class="text-danger small"></span>
+</div>

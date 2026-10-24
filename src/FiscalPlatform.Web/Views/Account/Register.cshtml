@@ -1,0 +1,39 @@
+@model RegisterInput
+@{
+    ViewData["Title"] = "Criar conta";
+    ViewData["FirstStep"] = 2;
+}
+<div class="page py-4">
+    <h1>Bem-vindo ao Emissor Fiscal</h1>
+    <p class="lead-text">Em uma única tela você cria seu acesso e deixa a empresa pronta para emitir. Leva poucos minutos.</p>
+
+    <form asp-action="Register" method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+
+        <section class="section">
+            <h2><span class="step">1</span> Seu acesso</h2>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label">E-mail</label>
+                    <input asp-for="Email" type="email" class="form-control" autocomplete="email" required autofocus />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label">Senha <span class="hint">(mínimo 8 caracteres)</span></label>
+                    <div class="input-group">
+                        <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" minlength="8" required />
+                        <button type="button" class="btn btn-outline-secondary" data-toggle-password="Password">Mostrar</button>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+            </div>
+        </section>
+
+        <partial name="_CompanyFields" for="Company" />
+
+        <div class="actions-bar">
+            <span class="hint">Você poderá alterar tudo depois em <strong>Empresa</strong>.</span>
+            <button class="btn btn-primary btn-lg">Criar conta e começar</button>
+        </div>
+    </form>
+</div>

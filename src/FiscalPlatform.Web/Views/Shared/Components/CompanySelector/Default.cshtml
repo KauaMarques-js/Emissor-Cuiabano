@@ -1,0 +1,24 @@
+@model List<Company>
+@{
+    int? activeId = ViewBag.ActiveId;
+}
+@if (Model.Count == 0)
+{
+    <a class="btn btn-sm btn-warning" asp-controller="Companies" asp-action="Create">Cadastrar empresa</a>
+}
+else
+{
+    <form asp-controller="Companies" asp-action="Select" method="post" class="d-flex gap-1">
+        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        <select name="id" class="form-select form-select-sm" onchange="this.form.submit()" title="Empresa ativa">
+            @if (activeId is null || Model.All(c => c.Id != activeId))
+            {
+                <option value="">-- selecione a empresa --</option>
+            }
+            @foreach (var c in Model)
+            {
+                <option value="@c.Id" selected="@(c.Id == activeId)">@c.DisplayName — @Ui.Doc(c.Cnpj)</option>
+            }
+        </select>
+    </form>
+}
