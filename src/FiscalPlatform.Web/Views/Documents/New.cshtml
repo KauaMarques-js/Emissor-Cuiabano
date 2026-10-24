@@ -1,0 +1,195 @@
+@model NoteFormModel
+@{
+    var f = Model.Input;
+    var c = Model.Company;
+    var isNfe = f.Type == FiscalDocumentType.Nfe;
+    var editing = f.DocumentId is not null;
+    var enabled = isNfe ? c.NfeEnabled : c.NfseEnabled;
+    var mode = c.ModeFor(f.Type);
+    var pt = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+    var rows = Math.Max(1, f.LineItem.Count);
+    string? At(List<string?> list, int i) => i < list.Count ? list[i] : null;
+    var newCustomerOpen = Model.Customers.Count == 0 || !string.IsNullOrWhiteSpace(f.NewCustomer.Document) || !string.IsNullOrWhiteSpace(f.NewCustomer.Name);
+    ViewData["Title"] = "Emitir nota";
+    var addressData = new ViewDataDictionary(ViewData) { TemplateInfo = { HtmlFieldPrefix = "NewCustomer.Address" } };
+}
+<div class="page">
+    <h1>@(editing ? $"Continuar nota #{f.DocumentId}" : "Emitir nota")</h1>
+    <p class="lead-text">@c.DisplayName · @Ui.Label(mode)</p>
+
+    @if (!editing && c.NfseEnabled && c.NfeEnabled)
+    {
+        <div class="btn-group mb-3" role="group" aria-label="Tipo de nota">
+            <a class="btn @(!isNfe ? "btn-primary" : "btn-outline-primary")" asp-route-type="Nfse">Serviço (NFS-e)</a>
+            <a class="btn @(isNfe ? "btn-primary" : "btn-outline-primary")" asp-route-type="Nfe">Produto (NF-e)</a>
+        </div>
+    }
+
+    @if (!enabled)
+    {
+        <div class="result result-wait">
+            Esta empresa não está configurada para emitir @Ui.TypeLabel(f.Type).
+            <a asp-controller="Companies" asp-action="Edit" asp-route-id="@c.Id">Ativar em Empresa</a>.
+        </div>
+        return;
+    }
+
+    @if (Model.Document?.Status == DocumentStatus.Rejeitada)
+    {
+        <div class="result result-error">
+            <strong>Esta nota foi rejeitada@(Model.Document.LastErrorCode is { } code ? $" ({code})" : "").</strong>
+            <div class="pre-wrap">@Model.Document.LastErrorMessage</div>
+            Corrija abaixo e emita de novo.
+        </div>
+    }
+    @if (Model.Errors.Count > 0)
+    {
+        <div class="alert alert-danger" role="alert">
+            <strong>A nota ainda não foi enviada. Corrija:</strong>
+            <ul class="mb-0">@foreach (var e in Model.Errors) { <li>@e</li> }</ul>
+        </div>
+    }
+    @switch (mode)
+    {
+        case EmissionMode.Simulacao:
+            <div class="notice">Simulação: nada é enviado ao governo e a nota não vale.</div>
+            break;
+        case EmissionMode.Homologacao:
+            <div class="notice">Teste no governo (homologação): a nota é enviada, mas não tem validade jurídica.</div>
+            break;
+    }
+
+    <form asp-action="New" method="post" id="note-form">
+        <input type="hidden" name="DocumentId" value="@f.DocumentId" />
+        <input type="hidden" name="Type" value="@f.Type" />
+
+        <section class="section">
+            <h2><span class="step">1</span> @(isNfe ? "Cliente" : "Para quem foi o serviço")</h2>
+            <label for="CustomerId" class="form-label">Cliente</label>
+            <select id="CustomerId" name="CustomerId" class="form-select">
+                <option value="">Escolha um cliente…</option>
+                @foreach (var cu in Model.Customers)
+                {
+                    <option value="@cu.Id" selected="@(cu.Id == f.CustomerId)">@cu.Name · @Ui.Doc(cu.Document)</option>
+                }
+            </select>
+            <details class="mt-2" open="@newCustomerOpen" data-lookup-scope>
+                <summary>Cliente novo? Cadastre aqui</summary>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-5">
+                        <label for="nc_doc" class="form-label">CPF ou CNPJ</label>
+                        <input id="nc_doc" name="NewCustomer.Document" value="@f.NewCustomer.Document" class="form-control" data-mask="document" data-lookup="cnpj" inputmode="numeric" />
+                        <div class="lookup-status" data-lookup-status="cnpj" aria-live="polite"></div>
+                    </div>
+                    <div class="col-md-7"><label for="nc_name" class="form-label">Nome ou razão social</label><input id="nc_name" name="NewCustomer.Name" value="@f.NewCustomer.Name" class="form-control" data-field="name" /></div>
+                    <div class="col-md-6"><label for="nc_email" class="form-label">E-mail <span class="hint">(opcional)</span></label><input id="nc_email" type="email" name="NewCustomer.Email" value="@f.NewCustomer.Email" class="form-control" data-field="email" /></div>
+                    <div class="col-md-6"><label for="nc_phone" class="form-label">Telefone <span class="hint">(opcional)</span></label><input id="nc_phone" name="NewCustomer.Phone" value="@f.NewCustomer.Phone" class="form-control" data-mask="phone" data-field="phone" /></div>
+                </div>
+                <div class="mt-2"><partial name="_AddressFields" model="f.NewCustomer.Address" view-data="addressData" /></div>
+                @if (isNfe)
+                {
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-6">
+                            <label for="nc_ie" class="form-label">Contribuinte de ICMS?</label>
+                            <select id="nc_ie" name="NewCustomer.IeIndicator" class="form-select">
+                                <option value="9">Não (pessoa física ou não contribuinte)</option>
+                                <option value="1" selected="@(f.NewCustomer.IeIndicator == 1)">Sim, tem inscrição estadual</option>
+                                <option value="2" selected="@(f.NewCustomer.IeIndicator == 2)">Isento</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6"><label for="nc_iedoc" class="form-label">Inscrição estadual</label><input id="nc_iedoc" name="NewCustomer.StateRegistration" value="@f.NewCustomer.StateRegistration" class="form-control" /></div>
+                    </div>
+                }
+                <p class="hint mt-2 mb-0">O cliente é salvo automaticamente ao emitir.</p>
+            </details>
+        </section>
+
+        <section class="section">
+            <h2><span class="step">2</span> @(isNfe ? "Produtos" : "Serviço prestado")</h2>
+            @if ((isNfe && Model.Products.Count == 0) || (!isNfe && Model.Services.Count == 0))
+            {
+                <div class="notice">Você ainda não cadastrou @(isNfe ? "produtos" : "serviços").
+                    <a asp-controller="@(isNfe ? "Products" : "Services")" asp-action="Create">Cadastrar agora</a></div>
+            }
+            <table class="table table-sm" id="lines">
+                <thead><tr><th>@(isNfe ? "Produto" : "Serviço")</th>@if (isNfe) { <th style="width:6rem">Qtd</th> }<th style="width:9rem">Valor</th><th style="width:8rem">Desconto</th><th style="width:8rem">Total</th>@if (isNfe) { <th style="width:3rem"></th> }</tr></thead>
+                <tbody>
+                    @for (var i = 0; i < rows; i++)
+                    {
+                        <tr>
+                            <td>
+                                <select name="LineItem" class="form-select form-select-sm" aria-label="@(isNfe ? "Produto" : "Serviço")">
+                                    <option value="">Escolha…</option>
+                                    @if (isNfe)
+                                    {
+                                        foreach (var p in Model.Products)
+                                        {
+                                            <option value="@p.Id" data-price="@p.Price.ToString("0.00", pt)" selected="@(At(f.LineItem, i) == p.Id.ToString())">@p.Description</option>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        foreach (var s in Model.Services)
+                                        {
+                                            <option value="@s.Id" data-price="@s.Price.ToString("0.00", pt)" data-description="@s.Description" data-withheld="@(s.IssWithheld ? "true" : "false")" selected="@(At(f.LineItem, i) == s.Id.ToString())">@s.Description</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            @if (isNfe) { <td><input name="LineQty" value="@(At(f.LineQty, i) ?? "1")" class="form-control form-control-sm" inputmode="decimal" aria-label="Quantidade" /></td> }
+                            else { <input type="hidden" name="LineQty" value="1" /> }
+                            <td><input name="LinePrice" value="@At(f.LinePrice, i)" class="form-control form-control-sm" inputmode="decimal" aria-label="Valor" /></td>
+                            <td><input name="LineDiscount" value="@At(f.LineDiscount, i)" class="form-control form-control-sm" inputmode="decimal" placeholder="0,00" aria-label="Desconto" /></td>
+                            <td class="line-total">—</td>
+                            @if (isNfe) { <td><button type="button" class="btn btn-sm btn-link text-danger remove-line" aria-label="Remover produto">✕</button></td> }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (isNfe)
+            {
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-line">+ Outro produto</button>
+            }
+            else
+            {
+                <label for="desc" class="form-label">Descrição que vai na nota</label>
+                <textarea id="desc" name="ServiceDescription" rows="3" class="form-control" maxlength="2000">@f.ServiceDescription</textarea>
+                <div class="form-check mt-2">
+                    <input type="checkbox" id="iss" name="IssWithheld" value="true" class="form-check-input" checked="@f.IssWithheld" />
+                    <label for="iss" class="form-check-label">O cliente retém o ISS</label>
+                </div>
+            }
+        </section>
+
+        <details class="section">
+            <summary>Mais opções</summary>
+            <div class="row g-2 mt-2">
+                @if (isNfe)
+                {
+                    <div class="col-md-8"><label for="nat" class="form-label">Natureza da operação</label><input id="nat" name="NatureOfOperation" value="@f.NatureOfOperation" class="form-control" /></div>
+                    <div class="col-md-4"><label for="freight" class="form-label">Frete</label><input id="freight" name="Freight" value="@f.Freight.ToString("0.00", pt)" class="form-control" inputmode="decimal" /></div>
+                }
+                else
+                {
+                    <div class="col-md-4"><label for="comp" class="form-label">Data do serviço (competência)</label><input id="comp" type="date" name="CompetenceDate" value="@f.CompetenceDate?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+                }
+                <div class="col-12">
+                    <label for="info" class="form-label">Observações na nota</label>
+                    <textarea id="info" name="AdditionalInfo" rows="2" class="form-control">@f.AdditionalInfo</textarea>
+                    @if (mode == EmissionMode.Simulacao) { <div class="hint">Para testar respostas: escreva [SIM:REJEITAR], [SIM:TIMEOUT] ou [SIM:PENDENTE].</div> }
+                </div>
+            </div>
+        </details>
+
+        <div class="actions-bar">
+            <div class="fs-5">Total <strong id="note-total">—</strong></div>
+            <div class="d-flex gap-2">
+                <button name="submit" value="draft" class="btn btn-outline-secondary">Salvar rascunho</button>
+                <button name="submit" value="emit" class="btn btn-primary btn-lg"
+                        data-confirm="@(mode == EmissionMode.Producao ? $"Emitir esta {Ui.TypeLabel(f.Type)} valendo (produção)? Ela terá validade jurídica." : null)">
+                    Emitir @Ui.TypeLabel(f.Type)
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
