@@ -5,4 +5,7 @@
     <Project Path="src/FiscalPlatform.Infrastructure/FiscalPlatform.Infrastructure.csproj" />
     <Project Path="src/FiscalPlatform.Integrations.Nfse/FiscalPlatform.Integrations.Nfse.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FiscalPlatform.UnitTests/FiscalPlatform.UnitTests.csproj" />
+  </Folder>
 </Solution>
