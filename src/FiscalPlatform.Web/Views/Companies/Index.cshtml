@@ -1,0 +1,31 @@
+@model List<Company>
+@{
+    ViewData["Title"] = "Empresas";
+    int? activeId = ViewBag.ActiveId;
+}
+<div class="page">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">Empresas</h1>
+        <a class="btn btn-primary" asp-action="Create">+ Adicionar empresa</a>
+    </div>
+    <table class="table table-hover">
+        <thead><tr><th>Empresa</th><th>CNPJ</th><th>Situação</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td><a asp-action="Edit" asp-route-id="@c.Id">@c.DisplayName</a> @if (c.Id == activeId) { <span class="badge text-bg-primary">em uso</span> }</td>
+                    <td>@Ui.Doc(c.Cnpj)</td>
+                    <td>@(c.IsActive ? "Ativa" : "Inativa")</td>
+                    <td class="text-end d-flex gap-1 justify-content-end">
+                        @if (c.IsActive && c.Id != activeId)
+                        {
+                            <form asp-action="Select" asp-route-id="@c.Id" method="post"><button class="btn btn-sm btn-outline-primary">Usar esta</button></form>
+                        }
+                        <form asp-action="ToggleActive" asp-route-id="@c.Id" method="post"><button class="btn btn-sm btn-outline-secondary">@(c.IsActive ? "Inativar" : "Reativar")</button></form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

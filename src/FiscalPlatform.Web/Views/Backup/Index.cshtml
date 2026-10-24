@@ -1,0 +1,21 @@
+@model List<FileInfo>
+@{ ViewData["Title"] = "Backup"; }
+<h1>Backup</h1>
+<p class="small" style="max-width:800px">
+    Diretório de dados: <code>@ViewBag.DataDirectory</code><br />
+    O backup contém uma cópia consistente do banco e os XMLs fiscais. Os certificados A1 <strong>não</strong> são incluídos
+    (estão criptografados com chaves deste usuário do Windows); após restaurar em outro computador, importe-os novamente.
+    Guarde os backups fora deste computador. Para restaurar: pare a aplicação, extraia o .zip no diretório de dados e inicie-a novamente.
+</p>
+<form asp-action="Create" method="post" class="mb-3"><button class="btn btn-primary">Gerar backup agora</button></form>
+<table class="table table-sm w-auto">
+    <thead><tr><th>Arquivo</th><th>Data</th><th>Tamanho</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var f in Model)
+        {
+            <tr><td>@f.Name</td><td>@f.LastWriteTime.ToString("dd/MM/yyyy HH:mm")</td><td>@((f.Length / 1024.0).ToString("0.0")) KB</td>
+                <td><a asp-action="Download" asp-route-name="@f.Name">baixar</a></td></tr>
+        }
+        @if (Model.Count == 0) { <tr><td colspan="4" class="text-muted">Nenhum backup gerado.</td></tr> }
+    </tbody>
+</table>

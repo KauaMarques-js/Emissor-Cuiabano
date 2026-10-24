@@ -1,0 +1,45 @@
+@model Customer
+@{
+    var isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Novo cliente" : "Editar cliente";
+}
+<div class="page">
+    <h1>@ViewData["Title"]</h1>
+    <p class="lead-text">Digite o CNPJ para preencher os dados automaticamente.</p>
+    <form method="post" asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@(isNew ? null : Model.Id)">
+        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+        <section class="section" data-lookup-scope>
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <label asp-for="Document" class="form-label">CPF ou CNPJ</label>
+                    <input asp-for="Document" value="@Ui.Doc(Model.Document)" class="form-control" data-mask="document" data-lookup="cnpj" inputmode="numeric" required autofocus />
+                    <div class="lookup-status" data-lookup-status="cnpj" aria-live="polite"></div>
+                </div>
+                <div class="col-md-7"><label asp-for="Name" class="form-label">Nome ou razão social</label><input asp-for="Name" class="form-control" data-field="name" required /></div>
+                <div class="col-md-6"><label asp-for="Email" class="form-label">E-mail <span class="hint">(opcional)</span></label><input asp-for="Email" type="email" class="form-control" data-field="email" /></div>
+                <div class="col-md-6"><label asp-for="Phone" class="form-label">Telefone <span class="hint">(opcional)</span></label><input asp-for="Phone" class="form-control" data-mask="phone" data-field="phone" inputmode="tel" /></div>
+            </div>
+            <h2 class="h6 mt-3">Endereço</h2>
+            <partial name="_AddressFields" for="Address" />
+            <details class="mt-3">
+                <summary>Inscrições (para NF-e e alguns municípios)</summary>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                        <label asp-for="IeIndicator" class="form-label">Contribuinte de ICMS?</label>
+                        <select asp-for="IeIndicator" class="form-select">
+                            <option value="9">Não (pessoa física ou não contribuinte)</option>
+                            <option value="1">Sim, tem inscrição estadual</option>
+                            <option value="2">Isento</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label asp-for="StateRegistration" class="form-label">Inscrição estadual</label><input asp-for="StateRegistration" class="form-control" /></div>
+                    <div class="col-md-4"><label asp-for="MunicipalRegistration" class="form-label">Inscrição municipal</label><input asp-for="MunicipalRegistration" class="form-control" /></div>
+                </div>
+            </details>
+        </section>
+        <div class="actions-bar">
+            <a asp-action="Index">Cancelar</a>
+            <button class="btn btn-primary">Salvar cliente</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,148 @@
+@model NotePageModel
+@{
+    var d = Model.Document;
+    var type = Ui.TypeLabel(d.Type);
+    var sent = Model.Attempts.Any(a => a.Operation == TransmissionOperation.Emissao);
+    ViewData["Title"] = $"{type} {d.DisplayNumber}";
+
+    // Situação em linguagem simples, com a próxima ação esperada.
+    var (css, title, text) = d.Status switch
+    {
+        DocumentStatus.Autorizada => ("result-ok", "AUTORIZADA",
+            d.IsSimulated ? "Autorizada na simulação: não tem valor fiscal."
+            : d.Environment == FiscalEnvironment.Homologacao ? "Gerada no teste do governo (homologação): não tem validade jurídica."
+            : "Nota válida. Baixe o PDF e o XML para enviar ao cliente."),
+        DocumentStatus.Rejeitada => ("result-error", "REJEITADA", "O governo não aceitou a nota. Veja o motivo, corrija e emita de novo."),
+        DocumentStatus.Pendente or DocumentStatus.Enviando => ("result-wait", "EM PROCESSAMENTO", "Aguarde alguns instantes e clique em \"Consultar situação\"."),
+        DocumentStatus.FalhaComunicacao => ("result-wait", "SEM RESPOSTA", "Não sabemos se a nota foi gerada. Não emita de novo: clique em \"Consultar situação\"."),
+        DocumentStatus.Cancelada => ("result-neutral", "CANCELADA", $"Cancelada em {Ui.Date(d.CancelledAt)}. Motivo: {d.CancelReason}"),
+        _ when sent => ("result-error", "NÃO ENVIADA", "A nota não foi transmitida. Veja o motivo abaixo."),
+        _ => ("result-neutral", "RASCUNHO", "Esta nota ainda não foi emitida."),
+    };
+    var showReason = d.LastErrorMessage is not null && d.Status is not (DocumentStatus.Autorizada or DocumentStatus.Cancelada);
+}
+<div class="page">
+    <p class="mb-2"><a asp-action="Index">← Notas</a></p>
+
+    <div class="result @css" role="status">
+        <div class="result-title">@type @(d.Number is null ? "" : $"nº {d.Number}") · @title</div>
+        <div>@text</div>
+        @if (showReason)
+        {
+            <div class="result-reason">
+                @if (d.LastErrorCode is not null) { <strong>@d.LastErrorCode: </strong> }<span class="pre-wrap">@d.LastErrorMessage</span>
+            </div>
+        }
+        @if (Model.Pending.Count > 0)
+        {
+            <div class="result-reason"><strong>Falta para emitir:</strong>
+                <ul class="mb-0">@foreach (var p in Model.Pending) { <li>@p</li> }</ul></div>
+        }
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4 no-print">
+        @if (DocumentRules.CanEdit(d))
+        {
+            <a class="btn btn-primary" asp-action="New" asp-route-id="@d.Id">@(sent ? "Corrigir e emitir de novo" : "Continuar e emitir")</a>
+        }
+        @if (DocumentRules.MustQueryBeforeRetry(d))
+        {
+            <form asp-action="Query" asp-route-id="@d.Id" method="post"><button class="btn btn-warning">Consultar situação</button></form>
+        }
+        @if (d.Status is DocumentStatus.Autorizada or DocumentStatus.Cancelada)
+        {
+            <a class="btn btn-primary" asp-action="Pdf" asp-route-id="@d.Id">Baixar PDF</a>
+        }
+        @if (DocumentRules.HasFiles(d))
+        {
+            <a class="btn btn-outline-primary" asp-action="Xml" asp-route-id="@d.Id">Baixar XML</a>
+        }
+        <form asp-action="Duplicate" asp-route-id="@d.Id" method="post"><button class="btn btn-outline-secondary">Emitir outra igual</button></form>
+    </div>
+
+    <table class="table">
+        <tr><th style="width:11rem">Cliente</th><td>@d.Customer?.Name <span class="text-muted">@Ui.Doc(d.Customer?.Document)</span></td></tr>
+        <tr><th>Itens</th><td>@string.Join("; ", d.Items.OrderBy(i => i.LineNumber).Select(i => $"{i.Quantity:0.####} × {i.Description} = {Ui.Money(i.Total)}"))</td></tr>
+        <tr><th>Total</th><td><strong>@Ui.Money(d.TotalAmount)</strong>@if (d.Type == FiscalDocumentType.Nfse && d.Nfse.IssWithheld) { <span class="text-muted"> · líquido @Ui.Money(d.NetAmount) (ISS retido)</span> }</td></tr>
+        @if (d.AuthorizedAt is not null) { <tr><th>Autorizada em</th><td>@Ui.Date(d.AuthorizedAt)</td></tr> }
+        @if (d.AccessKey is not null) { <tr><th>Chave de acesso</th><td class="small text-break">@d.AccessKey</td></tr> }
+        <tr><th>Modo</th><td>@(d.IsSimulated ? "Simulação" : Ui.Label(d.Environment))</td></tr>
+        @if (d.SubstitutesDocumentId is { } substituted) { <tr><th>Substitui</th><td><a asp-action="Show" asp-route-id="@substituted">nota #@substituted</a></td></tr> }
+        @if (d.SubstitutedByDocumentId is { } substitute) { <tr><th>Substituída por</th><td><a asp-action="Show" asp-route-id="@substitute">nota #@substitute</a></td></tr> }
+    </table>
+
+    <div class="d-grid gap-2 no-print">
+        @if (Model.CanCancel)
+        {
+            <details class="section">
+                <summary class="text-danger">Cancelar esta nota</summary>
+                <form asp-action="Cancel" asp-route-id="@d.Id" method="post" class="mt-3" data-confirm="Cancelar a @type @d.DisplayNumber? Não é possível desfazer.">
+                    @if (d.Type == FiscalDocumentType.Nfse)
+                    {
+                        <label for="reasonCode" class="form-label">Motivo</label>
+                        <select id="reasonCode" name="reasonCode" class="form-select mb-2">
+                            <option value="1">Erro na emissão</option>
+                            <option value="2">Serviço não prestado</option>
+                            <option value="9">Outro</option>
+                        </select>
+                    }
+                    <label for="reason" class="form-label">Explique em poucas palavras (mínimo 15 letras)</label>
+                    <textarea id="reason" name="reason" rows="2" minlength="15" maxlength="255" required class="form-control mb-2"></textarea>
+                    <button class="btn btn-danger">Confirmar cancelamento</button>
+                </form>
+            </details>
+        }
+        else if (d.Status == DocumentStatus.Autorizada && d.Type == FiscalDocumentType.Nfe)
+        {
+            <p class="hint">O prazo de cancelamento desta NF-e terminou. Fale com o contador sobre as alternativas.</p>
+        }
+        @if (DocumentRules.CanSubstitute(d))
+        {
+            <details class="section">
+                <summary>Corrigir esta NFS-e (substituição)</summary>
+                <p class="hint mt-2">Cria uma nota nova com os dados corrigidos. Quando ela for emitida, esta é cancelada automaticamente.</p>
+                <form asp-action="Substitute" asp-route-id="@d.Id" method="post"><button class="btn btn-outline-primary">Criar nota substituta</button></form>
+            </details>
+        }
+        @if (DocumentRules.CanSendCorrectionLetter(d))
+        {
+            <details class="section">
+                <summary>Carta de correção</summary>
+                <p class="hint mt-2">Corrige informações que não alteram valores, impostos, datas nem quem compra ou vende. Cartas já enviadas: @d.CorrectionLetterCount.</p>
+                <form asp-action="Correction" asp-route-id="@d.Id" method="post">
+                    <label for="text" class="form-label">Texto da correção</label>
+                    <textarea id="text" name="text" rows="3" minlength="15" maxlength="1000" required class="form-control mb-2"></textarea>
+                    <button class="btn btn-outline-primary">Enviar carta de correção</button>
+                </form>
+            </details>
+        }
+        @if (DocumentRules.CanDelete(d))
+        {
+            <form asp-action="Delete" asp-route-id="@d.Id" method="post" data-confirm="Excluir este rascunho?"><button class="btn btn-link text-danger p-0">Excluir rascunho</button></form>
+        }
+        else if (DocumentRules.CanArchive(d))
+        {
+            <form asp-action="Archive" asp-route-id="@d.Id" method="post" data-confirm="Arquivar esta nota? Ela sai da lista principal."><button class="btn btn-link p-0">Arquivar</button></form>
+        }
+    </div>
+
+    <details class="mt-4">
+        <summary>Histórico e detalhes técnicos</summary>
+        <table class="table table-sm mt-2">
+            <thead><tr><th>Quando</th><th>Envio</th><th>Resultado</th><th>Mensagem</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.Attempts)
+                {
+                    <tr>
+                        <td class="small text-nowrap">@Ui.Date(a.StartedAt)</td><td>@Ui.Label(a.Operation)</td><td>@Ui.Label(a.Outcome)</td>
+                        <td class="small pre-wrap">@a.Code @a.Message</td>
+                        <td><a asp-controller="Rejections" asp-action="Details" asp-route-id="@a.Id">XML e resposta</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <ul class="small">
+            @foreach (var e in Model.Events) { <li>@Ui.Date(e.CreatedAt) · @e.Type · @e.Description <span class="text-muted">(@e.UserName)</span></li> }
+        </ul>
+    </details>
+</div>

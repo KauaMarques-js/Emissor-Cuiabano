@@ -1,0 +1,26 @@
+@model Service
+@{
+    var isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Novo serviço" : "Editar serviço";
+}
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted small">Códigos de serviço, alíquota e retenção devem ser conferidos com o contador e a documentação da NFS-e Nacional.</p>
+<form method="post" asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@(isNew ? null : Model.Id)">
+    <div asp-validation-summary="All" class="text-danger small"></div>
+    <fieldset>
+        <legend>Serviço</legend>
+        <div class="row g-2">
+            <div class="col-md-2"><label asp-for="Code" class="form-label">Código interno *</label><input asp-for="Code" class="form-control" /></div>
+            <div class="col-md-7"><label asp-for="Description" class="form-label">Descrição *</label><input asp-for="Description" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="Price" class="form-label">Preço padrão</label><input asp-for="Price" class="form-control" /></div>
+            <div class="col-md-3"><label asp-for="NationalTaxCode" class="form-label">Cód. tributação nacional (6 dígitos)</label><input asp-for="NationalTaxCode" class="form-control" maxlength="8" /></div>
+            <div class="col-md-3"><label asp-for="MunicipalTaxCode" class="form-label">Cód. tributação municipal</label><input asp-for="MunicipalTaxCode" class="form-control" /></div>
+            <div class="col-md-2"><label asp-for="NbsCode" class="form-label">NBS</label><input asp-for="NbsCode" class="form-control" /></div>
+            <div class="col-md-2"><label asp-for="IncidenceMunicipalityIbge" class="form-label">IBGE município incidência</label><input asp-for="IncidenceMunicipalityIbge" class="form-control" maxlength="7" /></div>
+            <div class="col-md-2"><label asp-for="IssRate" class="form-label">Alíquota ISS (%)</label><input asp-for="IssRate" class="form-control" /></div>
+        </div>
+        <div class="form-check mt-2"><input asp-for="IssWithheld" class="form-check-input" /><label asp-for="IssWithheld" class="form-check-label">ISS retido pelo tomador (padrão)</label></div>
+    </fieldset>
+    <button class="btn btn-primary">Salvar</button>
+    <a class="btn btn-link" asp-action="Index">Cancelar</a>
+</form>

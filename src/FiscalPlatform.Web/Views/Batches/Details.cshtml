@@ -1,0 +1,60 @@
+@model EmissionBatch
+@{
+    ViewData["Title"] = "Lote #" + Model.Id;
+    BatchItemStatus? filter = ViewBag.Status;
+    var items = filter is null ? Model.Items : Model.Items.Where(i => i.Status == filter).ToList();
+    var done = Model.Items.Count(i => i.Status is not (BatchItemStatus.Aguardando or BatchItemStatus.Processando));
+    var retry = Model.Items.Where(i => i.Status is BatchItemStatus.Rejeitada or BatchItemStatus.NaoEnviado).Select(i => i.FiscalDocumentId).ToList();
+    var hasPending = Model.Items.Any(i => i.Status is BatchItemStatus.PendenteConsulta or BatchItemStatus.FalhaComunicacao);
+}
+@section Head {
+    @if (Model.Status == BatchStatus.Processando) { <meta http-equiv="refresh" content="3" /> }
+}
+<h1>Lote #@Model.Id — @Ui.TypeLabel(Model.DocumentType) <small class="fs-6 text-muted">@Ui.Label(Model.Environment) / @Ui.Label(Model.Provider)</small></h1>
+<p>
+    Situação: <strong>@Ui.Label(Model.Status)</strong> — @done de @Model.Items.Count processado(s)
+    @if (Model.Status == BatchStatus.Processando) { <span class="text-muted">(atualizando a cada 3 s)</span> }
+    — criado em @Ui.Date(Model.CreatedAt) por @Model.CreatedBy
+</p>
+<div class="progress mb-3" style="height: 8px; max-width: 500px"><div class="progress-bar" style="width:@(Model.Items.Count == 0 ? 0 : done * 100 / Model.Items.Count)%"></div></div>
+
+<div class="actions d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-sm btn-outline-secondary" asp-action="Export" asp-route-id="@Model.Id">Exportar relatório CSV</a>
+    @if (hasPending && Model.Status == BatchStatus.Concluido)
+    {
+        <form asp-action="QueryPending" asp-route-id="@Model.Id" method="post"><button class="btn btn-sm btn-warning">Consultar pendentes/falhas</button></form>
+    }
+    @if (retry.Count > 0 && Model.Status == BatchStatus.Concluido)
+    {
+        <form asp-action="Prepare" method="post">
+            @foreach (var id in retry) { <input type="hidden" name="ids" value="@id" /> }
+            <button class="btn btn-sm btn-outline-primary">Novo lote com rejeitadas/não enviadas (após corrigir)</button>
+        </form>
+    }
+</div>
+
+<div class="mb-2 small">Filtrar:
+    <a asp-route-id="@Model.Id">todos</a>
+    @foreach (var s in Enum.GetValues<BatchItemStatus>())
+    {
+        <span> · </span><a asp-route-id="@Model.Id" asp-route-status="@s">@Ui.Label(s) (@Model.Items.Count(i => i.Status == s))</a>
+    }
+</div>
+<table class="table table-sm">
+    <thead><tr><th>Documento</th><th>Número</th><th>Cliente</th><th>Total</th><th>Resultado</th><th>Mensagem</th><th>Processado</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var i in items.OrderBy(i => i.Id))
+        {
+            <tr>
+                <td><a asp-controller="Documents" asp-action="Show" asp-route-id="@i.FiscalDocumentId">#@i.FiscalDocumentId</a></td>
+                <td>@i.FiscalDocument?.DisplayNumber</td>
+                <td>@i.FiscalDocument?.Customer?.Name</td>
+                <td>@Ui.Money(i.FiscalDocument?.TotalAmount ?? 0)</td>
+                <td><span class="badge @Ui.BatchItemClass(i.Status)">@Ui.Label(i.Status)</span></td>
+                <td class="small pre-wrap">@i.Message</td>
+                <td class="small">@Ui.Date(i.ProcessedAt)</td>
+                <td>@if (i.FiscalDocument?.XmlPath is not null) { <a asp-controller="Documents" asp-action="Xml" asp-route-id="@i.FiscalDocumentId">XML</a> }</td>
+            </tr>
+        }
+    </tbody>
+</table>

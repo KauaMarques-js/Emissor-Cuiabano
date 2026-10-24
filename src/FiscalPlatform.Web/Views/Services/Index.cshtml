@@ -1,0 +1,27 @@
+@model Paged<Service>
+@{ ViewData["Title"] = "Serviços"; }
+<h1>Serviços</h1>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <input name="q" value="@ViewBag.Q" class="form-control w-auto" placeholder="Descrição ou código" />
+    <div class="form-check align-self-center"><input type="checkbox" name="inactive" value="true" class="form-check-input" id="inactive" checked="@ViewBag.Inactive" /><label class="form-check-label" for="inactive">Incluir inativos</label></div>
+    <button class="btn btn-outline-secondary">Buscar</button>
+    <a class="btn btn-primary" asp-action="Create">Novo serviço</a>
+    <a class="btn btn-outline-secondary" asp-action="Export" asp-route-q="@ViewBag.Q" asp-route-inactive="@ViewBag.Inactive">Exportar CSV</a>
+</form>
+<table class="table table-sm table-hover">
+    <thead><tr><th>Código</th><th>Descrição</th><th>Cód. trib. nacional</th><th>Município</th><th>Preço</th><th>ISS %</th><th>Retido</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var s in Model.Items)
+        {
+            <tr class="@(s.IsActive ? "" : "text-muted")">
+                <td>@s.Code</td><td>@s.Description</td><td>@s.NationalTaxCode</td><td>@s.IncidenceMunicipalityIbge</td>
+                <td>@Ui.Money(s.Price)</td><td>@s.IssRate</td><td>@(s.IssWithheld ? "Sim" : "Não")</td><td>@(s.IsActive ? "Ativo" : "Inativo")</td>
+                <td class="actions text-end">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@s.Id">Editar</a>
+                    <form asp-action="ToggleActive" asp-route-id="@s.Id" method="post"><button class="btn btn-sm btn-outline-secondary">@(s.IsActive ? "Inativar" : "Reativar")</button></form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<partial name="_Pager" model="Model" />
