@@ -1,0 +1,10 @@
+# Normaliza finais de linha no repositório (LF) e converte conforme o sistema na cópia local.
+* text=auto
+
+# Scripts do Windows precisam de CRLF.
+*.cmd text eol=crlf
+
+# Binários
+*.ico binary
+*.png binary
+*.pdf binary

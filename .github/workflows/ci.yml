@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'fix/**', 'hotfix/**']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    # Windows: a aplicação usa DPAPI e fontes do sistema para gerar o PDF.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar
+        run: dotnet restore FiscalPlatform.slnx
+
+      - name: Compilar (avisos tratados como erro)
+        run: dotnet build FiscalPlatform.slnx --no-restore --configuration Release -warnaserror
+
+      - name: Testar
+        run: dotnet test FiscalPlatform.slnx --no-build --configuration Release --verbosity normal

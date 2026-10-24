@@ -1,0 +1,9 @@
+root = true
+
+[*.cs]
+# Sinaliza usings sem uso no build (mantém o código enxuto).
+dotnet_diagnostic.IDE0005.severity = warning
+
+[**/Migrations/*.cs]
+# Código gerado pelo EF Core.
+generated_code = true
