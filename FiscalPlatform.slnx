@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FiscalPlatform.Application/FiscalPlatform.Application.csproj" />
+    <Project Path="src/FiscalPlatform.Domain/FiscalPlatform.Domain.csproj" />
+    <Project Path="src/FiscalPlatform.Infrastructure/FiscalPlatform.Infrastructure.csproj" />
+    <Project Path="src/FiscalPlatform.Integrations.Nfse/FiscalPlatform.Integrations.Nfse.csproj" />
+    <Project Path="src/FiscalPlatform.Web/FiscalPlatform.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FiscalPlatform.UnitTests/FiscalPlatform.UnitTests.csproj" />
+  </Folder>
+</Solution>

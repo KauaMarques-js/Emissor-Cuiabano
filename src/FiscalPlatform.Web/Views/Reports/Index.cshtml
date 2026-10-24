@@ -1,0 +1,39 @@
+@{
+    ViewData["Title"] = "Relatórios";
+    List<ReportRow> rows = ViewBag.Rows;
+    Dictionary<TransmissionOutcome, int> failures = ViewBag.Failures;
+    DateOnly from = ViewBag.From, to = ViewBag.To;
+}
+<h1>Relatórios</h1>
+<form method="get" class="d-flex gap-2 align-items-end mb-3">
+    <div><label for="f_from" class="form-label small">De</label><input type="date" id="f_from" name="from" value="@from.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div><label for="f_to" class="form-label small">Até</label><input type="date" id="f_to" name="to" value="@to.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <button class="btn btn-sm btn-outline-secondary">Atualizar</button>
+    <a class="btn btn-sm btn-outline-secondary" asp-controller="Documents" asp-action="Export" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")">Exportar notas do período (CSV)</a>
+</form>
+
+<h2>Notas criadas no período, por situação</h2>
+<table class="table table-sm w-auto">
+    <thead><tr><th>Tipo</th><th>Situação</th><th>Quantidade</th><th>Valor total</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var r in rows)
+        {
+            <tr><td>@Ui.TypeLabel(r.Type)</td><td><span class="badge @Ui.StatusClass(r.Status)">@Ui.Label(r.Status)</span></td><td>@r.Count</td><td>@Ui.Money(r.Total)</td>
+                <td><a asp-controller="Documents" asp-action="Index" asp-route-type="@r.Type" asp-route-status="@r.Status" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")">ver</a></td></tr>
+        }
+        @if (rows.Count == 0) { <tr><td colspan="5" class="text-muted">Nenhuma nota no período.</td></tr> }
+    </tbody>
+</table>
+<p class="small text-muted">Notas em simulação estão incluídas; filtre por ambiente/provedor na lista de notas se necessário.</p>
+
+<h2>Tentativas sem sucesso no período</h2>
+<table class="table table-sm w-auto">
+    <thead><tr><th>Estado</th><th>Quantidade</th></tr></thead>
+    <tbody>
+        @foreach (var f in failures)
+        {
+            <tr><td><a asp-controller="Rejections" asp-action="Index" asp-route-outcome="@f.Key" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")">@Ui.Label(f.Key)</a></td><td>@f.Value</td></tr>
+        }
+        @if (failures.Count == 0) { <tr><td colspan="2" class="text-muted">Nenhuma.</td></tr> }
+    </tbody>
+</table>

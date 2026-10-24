@@ -1,0 +1,81 @@
+@model Paged<FiscalDocument>
+@{
+    ViewData["Title"] = "Notas";
+    DocumentFilter f = ViewBag.Filter;
+    int attention = ViewBag.AttentionCount;
+    var advanced = f.Environment is not null || f.BatchId is not null || f.Archived;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="mb-0">Notas</h1>
+    <a class="btn btn-primary" asp-action="New">+ Emitir nota</a>
+</div>
+
+@if (attention > 0 && !f.Attention)
+{
+    <div class="result result-wait py-2">
+        @attention nota(s) precisam de atenção (rejeitadas ou sem resposta).
+        <a asp-action="Index" asp-route-attention="true">Ver agora</a>
+    </div>
+}
+
+<form method="get" class="row g-2 align-items-end mb-3" role="search">
+    <div class="col-md-4"><label for="q" class="form-label small">Buscar</label><input id="q" name="Q" value="@f.Q" class="form-control" placeholder="Número, cliente, CPF/CNPJ ou chave" /></div>
+    <div class="col-6 col-md-2"><label for="type" class="form-label small">Tipo</label>
+        <select id="type" name="Type" class="form-select"><option value="">Todos</option>
+            @foreach (var t in Enum.GetValues<FiscalDocumentType>()) { <option value="@t" selected="@(f.Type == t)">@Ui.TypeLabel(t)</option> }</select></div>
+    <div class="col-6 col-md-2"><label for="status" class="form-label small">Situação</label>
+        <select id="status" name="Status" class="form-select"><option value="">Todas</option>
+            @foreach (var s in Enum.GetValues<DocumentStatus>()) { <option value="@s" selected="@(f.Status == s)">@Ui.Label(s)</option> }</select></div>
+    <div class="col-6 col-md-2"><label for="from" class="form-label small">De</label><input id="from" type="date" name="From" value="@f.From?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+    <div class="col-6 col-md-2"><label for="to" class="form-label small">Até</label><input id="to" type="date" name="To" value="@f.To?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+    <details class="col-12 small" open="@advanced">
+        <summary>Mais filtros</summary>
+        <div class="row g-2 mt-1">
+            <div class="col-md-3"><label for="env" class="form-label">Ambiente</label>
+                <select id="env" name="Environment" class="form-select form-select-sm"><option value="">Todos</option>
+                    @foreach (var e in Enum.GetValues<FiscalEnvironment>()) { <option value="@e" selected="@(f.Environment == e)">@Ui.Label(e)</option> }</select></div>
+            <div class="col-md-2"><label for="batch" class="form-label">Lote</label><input id="batch" name="BatchId" value="@f.BatchId" class="form-control form-control-sm" inputmode="numeric" /></div>
+            <div class="col-md-3 form-check align-self-end ms-2"><input type="checkbox" id="arch" name="Archived" value="true" class="form-check-input" checked="@f.Archived" /><label for="arch" class="form-check-label">Arquivadas</label></div>
+        </div>
+    </details>
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-outline-primary">Filtrar</button>
+        <a class="btn btn-link" asp-action="Index">Limpar</a>
+        <a class="btn btn-link ms-auto" href="@Url.Action("Export")@Context.Request.QueryString">Exportar planilha (CSV)</a>
+    </div>
+</form>
+
+@if (Model.Total == 0)
+{
+    <div class="result result-neutral">Nenhuma nota encontrada. <a asp-action="New">Emita a primeira</a>.</div>
+}
+else
+{
+    <form asp-controller="Batches" asp-action="Prepare" method="post">
+        <table class="table table-hover align-middle">
+            <thead><tr><th scope="col"><span class="visually-hidden">Selecionar</span></th><th>Nota</th><th>Cliente</th><th class="text-end">Total</th><th>Situação</th><th>Data</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var d in Model.Items)
+                {
+                    <tr>
+                        <td>@if (DocumentRules.CanEmit(d)) { <input type="checkbox" name="ids" value="@d.Id" class="form-check-input" aria-label="Selecionar nota #@d.Id para emissão em lote" /> }</td>
+                        <td><a asp-action="Show" asp-route-id="@d.Id">@Ui.TypeLabel(d.Type) @(d.Number?.ToString() ?? $"rascunho #{d.Id}")</a></td>
+                        <td>@d.Customer?.Name</td>
+                        <td class="text-end">@Ui.Money(d.TotalAmount)</td>
+                        <td><span class="badge @Ui.StatusClass(d.Status)">@Ui.Label(d.Status)</span>
+                            @if (d.IsSimulated && d.Status is DocumentStatus.Autorizada or DocumentStatus.Cancelada) { <span class="badge text-bg-light border">simulação</span> }</td>
+                        <td class="small text-nowrap">@Ui.Date(d.AuthorizedAt ?? d.CreatedAt)</td>
+                        <td class="text-end text-nowrap">
+                            @if (d.Status is DocumentStatus.Autorizada or DocumentStatus.Cancelada) { <a class="btn btn-sm btn-outline-secondary" asp-action="Pdf" asp-route-id="@d.Id">PDF</a> }
+                            @if (DocumentRules.HasFiles(d)) { <a class="btn btn-sm btn-outline-secondary" asp-action="Xml" asp-route-id="@d.Id">XML</a> }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <partial name="_Pager" model="Model" />
+            <button class="btn btn-sm btn-outline-primary">Emitir selecionadas em lote</button>
+        </div>
+    </form>
+}

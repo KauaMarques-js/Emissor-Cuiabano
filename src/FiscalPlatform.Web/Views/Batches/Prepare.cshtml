@@ -1,0 +1,40 @@
+@model List<BatchCandidate>
+@{
+    ViewData["Title"] = "Preparar lote";
+    Company company = ViewBag.Company;
+    var eligible = Model.Where(c => c.Eligible).ToList();
+    var type = eligible.FirstOrDefault()?.Document.Type ?? Model.FirstOrDefault()?.Document.Type ?? FiscalDocumentType.Nfe;
+}
+<h1>Preparar lote de emissão</h1>
+<table class="table table-sm w-auto">
+    <tr><th>Empresa emissora</th><td>@company.LegalName — @Ui.Doc(company.Cnpj)</td></tr>
+    <tr><th>Tipo</th><td>@Ui.TypeLabel(type)</td></tr>
+    <tr><th>Ambiente / provedor</th><td><strong>@Ui.Label(company.EnvironmentFor(type)) / @Ui.Label(company.ProviderFor(type))</strong></td></tr>
+    <tr><th>Aptos</th><td class="text-success fw-bold">@eligible.Count</td></tr>
+    <tr><th>Com pendências (ficarão fora)</th><td class="text-danger fw-bold">@(Model.Count - eligible.Count)</td></tr>
+</table>
+
+<form asp-action="Create" method="post" data-confirm="Transmitir as notas marcadas?">
+    <table class="table table-sm">
+        <thead><tr><th>Incluir</th><th>Documento</th><th>Cliente</th><th>Total</th><th>Situação</th><th>Pendências</th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                var d = c.Document;
+                <tr class="@(c.Eligible ? "" : "table-danger")">
+                    <td>@if (c.Eligible) { <input type="checkbox" name="ids" value="@d.Id" checked /> } else { <span>—</span> }</td>
+                    <td><a asp-controller="Documents" asp-action="Show" asp-route-id="@d.Id">#@d.Id @Ui.TypeLabel(d.Type)</a></td>
+                    <td>@d.Customer?.Name</td>
+                    <td>@Ui.Money(d.TotalAmount)</td>
+                    <td><span class="badge @Ui.StatusClass(d.Status)">@Ui.Label(d.Status)</span></td>
+                    <td class="small">@if (c.Eligible) { <span class="text-success">OK</span> } else { <ul class="mb-0">@foreach (var e in c.Errors) { <li>@e</li> }</ul> }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (eligible.Count > 0)
+    {
+        <button class="btn btn-primary">Confirmar e transmitir lote</button>
+    }
+    <a class="btn btn-link" asp-controller="Documents" asp-action="Index">Voltar</a>
+</form>

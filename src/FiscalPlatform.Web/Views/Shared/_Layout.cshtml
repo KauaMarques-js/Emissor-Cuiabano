@@ -1,0 +1,65 @@
+﻿@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    string Active(string c, string? a = null) => c == controller && (a is null || a == action) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    @await RenderSectionAsync("Head", required: false)
+    <title>@ViewData["Title"] · Emissor Fiscal</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <header class="topbar">
+            <div class="container-fluid py-2 d-flex flex-wrap align-items-center gap-2">
+                <a class="brand me-2" asp-controller="Documents" asp-action="New">Emissor Fiscal</a>
+                <nav class="d-flex flex-wrap align-items-center gap-1" aria-label="Principal">
+                    <a class="primary" asp-controller="Documents" asp-action="New">+ Emitir nota</a>
+                    <a class="@Active("Documents", "Index")" asp-controller="Documents" asp-action="Index">Notas</a>
+                    <a class="@Active("Customers")" asp-controller="Customers" asp-action="Index">Clientes</a>
+                    <a class="@Active("Services")" asp-controller="Services" asp-action="Index">Serviços</a>
+                    <a class="@Active("Products")" asp-controller="Products" asp-action="Index">Produtos</a>
+                    <a class="@Active("Companies")" asp-controller="Companies" asp-action="Index">Empresa</a>
+                    <details class="nav-more">
+                        <summary>Mais ▾</summary>
+                        <div class="nav-more-menu">
+                            <a asp-controller="Rejections" asp-action="Index">Rejeições e falhas</a>
+                            <a asp-controller="Batches" asp-action="Index">Emissões em lote</a>
+                            <a asp-controller="Reports" asp-action="Index">Relatórios</a>
+                            <a asp-controller="Audit" asp-action="Index">Auditoria</a>
+                            <a asp-controller="Backup" asp-action="Index">Backup</a>
+                        </div>
+                    </details>
+                </nav>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    @await Component.InvokeAsync("CompanySelector")
+                    <span class="small text-muted d-none d-md-inline">@User.Identity.Name</span>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button class="btn btn-sm btn-outline-secondary">Sair</button>
+                    </form>
+                </div>
+            </div>
+        </header>
+    }
+    <main class="container-fluid pb-5">
+        <div role="status" aria-live="polite">
+            @if (TempData["Message"] is string message)
+            {
+                <div class="alert alert-success page">@message</div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="alert alert-danger page">@error</div>
+            }
+        </div>
+        @RenderBody()
+    </main>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

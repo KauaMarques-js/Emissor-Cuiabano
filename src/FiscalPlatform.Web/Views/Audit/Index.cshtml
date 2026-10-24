@@ -1,0 +1,32 @@
+@model Paged<AuditLog>
+@{
+    ViewData["Title"] = "Auditoria";
+    Dictionary<int, string> companies = ViewBag.Companies;
+    int? companyId = ViewBag.CompanyId;
+}
+<h1>Auditoria</h1>
+<form method="get" class="d-flex gap-2 mb-3">
+    <input name="q" value="@ViewBag.Q" class="form-control form-control-sm w-auto" placeholder="Ação, usuário, detalhe ou ID" />
+    <select name="companyId" class="form-select form-select-sm w-auto">
+        <option value="">Todas as empresas</option>
+        @foreach (var c in companies) { <option value="@c.Key" selected="@(companyId == c.Key)">@c.Value</option> }
+    </select>
+    <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+</form>
+<table class="table table-sm">
+    <thead><tr><th>Data</th><th>Usuário</th><th>Empresa</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr></thead>
+    <tbody>
+        @foreach (var a in Model.Items)
+        {
+            <tr>
+                <td class="small text-nowrap">@a.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                <td>@a.UserName</td>
+                <td class="small">@(a.CompanyId is int id && companies.TryGetValue(id, out var name) ? name : "—")</td>
+                <td>@a.Action</td>
+                <td class="small">@a.EntityType @a.EntityId</td>
+                <td class="small pre-wrap">@a.Details</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<partial name="_Pager" model="Model" />

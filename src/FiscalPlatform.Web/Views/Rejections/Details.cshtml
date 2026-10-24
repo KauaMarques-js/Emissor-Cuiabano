@@ -1,0 +1,49 @@
+@model TransmissionAttempt
+@{
+    ViewData["Title"] = "Tentativa #" + Model.Id;
+    List<TransmissionAttempt> history = ViewBag.History;
+}
+<h1>Tentativa #@Model.Id — @Ui.Label(Model.Outcome)</h1>
+<table class="table table-sm w-auto">
+    <tr><th>Documento</th><td><a asp-controller="Documents" asp-action="Show" asp-route-id="@Model.FiscalDocumentId">#@Model.FiscalDocumentId @Model.FiscalDocument?.DisplayNumber</a>
+        @if (Model.FiscalDocument is not null) { <span class="badge @Ui.StatusClass(Model.FiscalDocument.Status)">@Ui.Label(Model.FiscalDocument.Status)</span> }</td></tr>
+    <tr><th>Tipo / ambiente / provedor</th><td>@Ui.TypeLabel(Model.DocumentType) — @Ui.Label(Model.Environment) — @Ui.Label(Model.Provider)</td></tr>
+    <tr><th>Operação</th><td>@Ui.Label(Model.Operation) (id interno @Model.OperationId)</td></tr>
+    <tr><th>Início / fim</th><td>@Model.StartedAt.ToString("dd/MM/yyyy HH:mm:ss") / @Model.FinishedAt?.ToString("dd/MM/yyyy HH:mm:ss")</td></tr>
+    <tr><th>Usuário / lote</th><td>@Model.UserName / @Model.BatchId</td></tr>
+    <tr><th>Código retornado</th><td>@Model.Code</td></tr>
+    <tr><th>Protocolo</th><td>@Model.Protocol</td></tr>
+</table>
+
+<h2>Mensagem recebida (integral)</h2>
+<pre class="payload">@Model.Message</pre>
+@if (!string.IsNullOrEmpty(Model.Details))
+{
+    <h2>Detalhes</h2>
+    <pre class="payload">@Model.Details</pre>
+}
+@if (!string.IsNullOrEmpty(Model.Summary))
+{
+    <div class="alert alert-info"><strong>Orientação da aplicação (não oficial):</strong> @Model.Summary</div>
+}
+@if (Model.FiscalDocument is not null && DocumentRules.CanEdit(Model.FiscalDocument))
+{
+    <a class="btn btn-primary mb-3" asp-controller="Documents" asp-action="New" asp-route-id="@Model.FiscalDocumentId">Corrigir o documento</a>
+}
+
+<details class="mb-3"><summary>Requisição enviada</summary><pre class="payload">@Model.RequestPayload</pre></details>
+<details class="mb-3"><summary>Resposta técnica</summary><pre class="payload">@Model.ResponsePayload</pre></details>
+
+<h2>Histórico de tentativas deste documento</h2>
+<table class="table table-sm">
+    <thead><tr><th>Data</th><th>Operação</th><th>Resultado</th><th>Código</th><th>Mensagem</th></tr></thead>
+    <tbody>
+        @foreach (var a in history)
+        {
+            <tr class="@(a.Id == Model.Id ? "table-primary" : "")">
+                <td class="small"><a asp-action="Details" asp-route-id="@a.Id">@Ui.Date(a.StartedAt)</a></td>
+                <td>@Ui.Label(a.Operation)</td><td>@Ui.Label(a.Outcome)</td><td>@a.Code</td><td class="small pre-wrap">@a.Message</td>
+            </tr>
+        }
+    </tbody>
+</table>

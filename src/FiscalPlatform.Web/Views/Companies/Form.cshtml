@@ -1,0 +1,50 @@
+@model CompanyPageModel
+@{
+    var isNew = Model.Id is null;
+    ViewData["Title"] = isNew ? "Nova empresa" : "Empresa";
+    var active = Model.Certificates.FirstOrDefault(c => c.IsActive);
+    // Só interessa o que vale para os tipos de nota que a empresa emite.
+    var readiness = Model.Readiness.Where(r => r.AppliesTo switch
+    {
+        FiscalDocumentType.Nfe => Model.Input.IssuesNfe,
+        FiscalDocumentType.Nfse => Model.Input.IssuesNfse,
+        _ => true,
+    }).ToList();
+    var blocking = readiness.Where(r => r.Blocking).ToList();
+}
+<div class="page">
+    <h1>@(isNew ? "Adicionar empresa" : Model.Input.LegalName)</h1>
+    <p class="lead-text">@(isNew ? "Cadastre outra empresa para emitir notas por ela." : "Dados usados em todas as notas desta empresa.")</p>
+
+    @if (!isNew)
+    {
+        <div class="@(blocking.Count == 0 ? "result result-ok" : "result result-wait")">
+            <div class="fw-semibold">@(blocking.Count == 0 ? "Tudo certo para emitir." : "Falta pouco para emitir:")</div>
+            <ul class="mb-0 small">
+                @foreach (var item in readiness.OrderByDescending(r => r.Blocking))
+                {
+                    <li>@(item.AppliesTo is { } t ? Ui.TypeLabel(t) + ": " : "")@item.Message</li>
+                }
+            </ul>
+        </div>
+        @if (active is not null)
+        {
+            var status = active.StatusAt(DateTime.Now, Model.WarningDays);
+            <p class="small">Certificado atual: <span class="badge @Ui.CertificateClass(status)">@Ui.Label(status)</span>
+                válido até <strong>@active.NotAfter.ToString("dd/MM/yyyy")</strong> · @Ui.Doc(active.CertificateCnpj)
+                <span class="hint d-block">Titular: @active.Subject · Emitido por: @active.Issuer</span>
+                @if (active.ValidationNotes is not null) { <span class="hint d-block">@active.ValidationNotes</span> }
+            </p>
+        }
+    }
+
+    <form asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+        <partial name="_CompanyFields" for="Input" />
+        <div class="actions-bar">
+            @if (isNew) { <a asp-action="Index">Cancelar</a> }
+            else { <a asp-action="Create">+ Adicionar outra empresa</a> }
+            <button class="btn btn-primary btn-lg">Salvar</button>
+        </div>
+    </form>
+</div>
