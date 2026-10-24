@@ -1,0 +1,47 @@
+@model Paged<TransmissionAttempt>
+@{
+    ViewData["Title"] = "Rejeições e falhas";
+    AttemptFilter f = ViewBag.Filter;
+}
+<h1>Central de rejeições e falhas</h1>
+<p class="small text-muted">Toda tentativa que não resultou em autorização ou evento registrado. Rejeição oficial ≠ falha de comunicação: em timeout o resultado é desconhecido e é preciso consultar antes de reenviar.</p>
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-auto"><label for="f_Type" class="form-label small">Tipo</label>
+        <select id="f_Type" name="Type" class="form-select form-select-sm"><option value="">Todos</option>
+            @foreach (var t in Enum.GetValues<FiscalDocumentType>()) { <option value="@t" selected="@(f.Type == t)">@Ui.TypeLabel(t)</option> }</select></div>
+    <div class="col-auto"><label for="f_Outcome" class="form-label small">Estado</label>
+        <select id="f_Outcome" name="Outcome" class="form-select form-select-sm"><option value="">Todos</option>
+            @foreach (var o in Enum.GetValues<TransmissionOutcome>().Where(o => o is not (TransmissionOutcome.Autorizada or TransmissionOutcome.EventoRegistrado)))
+            { <option value="@o" selected="@(f.Outcome == o)">@Ui.Label(o)</option> }</select></div>
+    <div class="col-auto"><label for="f_Code" class="form-label small">Código</label><input id="f_Code" name="Code" value="@f.Code" class="form-control form-control-sm" style="width:7rem" /></div>
+    <div class="col-auto"><label for="f_Customer" class="form-label small">Cliente</label><input id="f_Customer" name="Customer" value="@f.Customer" class="form-control form-control-sm" /></div>
+    <div class="col-auto"><label for="f_DocumentId" class="form-label small">Documento</label><input id="f_DocumentId" name="DocumentId" value="@f.DocumentId" class="form-control form-control-sm" style="width:6rem" /></div>
+    <div class="col-auto"><label for="f_BatchId" class="form-label small">Lote</label><input id="f_BatchId" name="BatchId" value="@f.BatchId" class="form-control form-control-sm" style="width:6rem" /></div>
+    <div class="col-auto"><label for="f_From" class="form-label small">De</label><input type="date" id="f_From" name="From" value="@f.From?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div class="col-auto"><label for="f_To" class="form-label small">Até</label><input type="date" id="f_To" name="To" value="@f.To?.ToString("yyyy-MM-dd")" class="form-control form-control-sm" /></div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary">Filtrar</button></div>
+</form>
+<table class="table table-sm table-hover">
+    <thead><tr><th>Data</th><th>Documento</th><th>Tipo</th><th>Cliente</th><th>Operação</th><th>Estado</th><th>Código</th><th>Mensagem recebida</th><th>Situação atual</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var a in Model.Items)
+        {
+            <tr>
+                <td class="small text-nowrap">@Ui.Date(a.StartedAt)</td>
+                <td><a asp-controller="Documents" asp-action="Show" asp-route-id="@a.FiscalDocumentId">#@a.FiscalDocumentId @a.FiscalDocument?.DisplayNumber</a></td>
+                <td>@Ui.TypeLabel(a.DocumentType) @(a.Provider == ProviderKind.Simulacao ? "(sim.)" : "")</td>
+                <td>@a.FiscalDocument?.Customer?.Name</td>
+                <td>@Ui.Label(a.Operation)</td>
+                <td>@Ui.Label(a.Outcome)</td>
+                <td>@a.Code</td>
+                <td class="small pre-wrap">@a.Message</td>
+                <td>@if (a.FiscalDocument is not null) { <span class="badge @Ui.StatusClass(a.FiscalDocument.Status)">@Ui.Label(a.FiscalDocument.Status)</span> }</td>
+                <td class="text-nowrap">
+                    <a asp-action="Details" asp-route-id="@a.Id">detalhes</a>
+                    @if (a.FiscalDocument is not null && DocumentRules.CanEdit(a.FiscalDocument)) { <span> · </span><a asp-controller="Documents" asp-action="New" asp-route-id="@a.FiscalDocumentId">corrigir</a> }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<partial name="_Pager" model="Model" />

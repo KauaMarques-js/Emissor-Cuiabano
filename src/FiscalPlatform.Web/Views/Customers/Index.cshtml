@@ -1,0 +1,27 @@
+@model Paged<Customer>
+@{ ViewData["Title"] = "Clientes / Tomadores"; }
+<h1>Clientes / Tomadores</h1>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <input name="q" value="@ViewBag.Q" class="form-control w-auto" placeholder="Nome ou CPF/CNPJ" />
+    <div class="form-check align-self-center"><input type="checkbox" name="inactive" value="true" class="form-check-input" id="inactive" checked="@ViewBag.Inactive" /><label class="form-check-label" for="inactive">Incluir inativos</label></div>
+    <button class="btn btn-outline-secondary">Buscar</button>
+    <a class="btn btn-primary" asp-action="Create">Novo cliente</a>
+    <a class="btn btn-outline-secondary" asp-action="Export" asp-route-q="@ViewBag.Q" asp-route-inactive="@ViewBag.Inactive">Exportar CSV</a>
+</form>
+<table class="table table-sm table-hover">
+    <thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>IE</th><th>Município/UF</th><th>E-mail</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var c in Model.Items)
+        {
+            <tr class="@(c.IsActive ? "" : "text-muted")">
+                <td>@c.Name</td><td>@Ui.Doc(c.Document)</td><td>@c.StateRegistration</td>
+                <td>@c.Address.City/@c.Address.State</td><td>@c.Email</td><td>@(c.IsActive ? "Ativo" : "Inativo")</td>
+                <td class="actions text-end">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@c.Id">Editar</a>
+                    <form asp-action="ToggleActive" asp-route-id="@c.Id" method="post"><button class="btn btn-sm btn-outline-secondary">@(c.IsActive ? "Inativar" : "Reativar")</button></form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<partial name="_Pager" model="Model" />

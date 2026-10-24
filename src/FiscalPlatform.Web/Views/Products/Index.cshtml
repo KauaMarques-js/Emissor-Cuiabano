@@ -1,0 +1,27 @@
+@model Paged<Product>
+@{ ViewData["Title"] = "Produtos"; }
+<h1>Produtos</h1>
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <input name="q" value="@ViewBag.Q" class="form-control w-auto" placeholder="Descrição, código ou GTIN" />
+    <div class="form-check align-self-center"><input type="checkbox" name="inactive" value="true" class="form-check-input" id="inactive" checked="@ViewBag.Inactive" /><label class="form-check-label" for="inactive">Incluir inativos</label></div>
+    <button class="btn btn-outline-secondary">Buscar</button>
+    <a class="btn btn-primary" asp-action="Create">Novo produto</a>
+    <a class="btn btn-outline-secondary" asp-action="Export" asp-route-q="@ViewBag.Q" asp-route-inactive="@ViewBag.Inactive">Exportar CSV</a>
+</form>
+<table class="table table-sm table-hover">
+    <thead><tr><th>Código</th><th>Descrição</th><th>Un.</th><th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>Preço</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var p in Model.Items)
+        {
+            <tr class="@(p.IsActive ? "" : "text-muted")">
+                <td>@p.Code</td><td>@p.Description</td><td>@p.Unit</td><td>@p.Ncm</td><td>@p.Cfop</td><td>@p.IcmsTaxCode</td>
+                <td>@Ui.Money(p.Price)</td><td>@(p.IsActive ? "Ativo" : "Inativo")</td>
+                <td class="actions text-end">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@p.Id">Editar</a>
+                    <form asp-action="ToggleActive" asp-route-id="@p.Id" method="post"><button class="btn btn-sm btn-outline-secondary">@(p.IsActive ? "Inativar" : "Reativar")</button></form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<partial name="_Pager" model="Model" />
